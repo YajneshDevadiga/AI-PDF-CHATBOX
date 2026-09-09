@@ -20,6 +20,7 @@ Current integrations:
     - Member 2 Prompt Engineering -> integration point
     - Member 3 Conversation Memory -> integration point
     - Member 4 LLM Integration -> integration point
+    - Document Ingestion -> CONNECTED
 
 Run:
     pip install fastapi uvicorn[standard] pydantic python-multipart
@@ -34,6 +35,7 @@ Self-test:
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 
@@ -76,6 +78,14 @@ from memory import (
 from llm import (
     stream_llm_response as llm_stream_response,
 )
+
+# ============================================================
+# IMPORT INGESTION PIPELINE COMPONENTS
+# ============================================================
+
+from ingest import extract_pdf
+from data_cleaner import DataCleaner
+from data_chunker import split_documents
 
 # ============================================================
 # CONFIGURATION
@@ -260,6 +270,8 @@ class UploadResponse(BaseModel):
 
     status: str
 
+    chunks_indexed: int = 0
+
     uploaded_at: str
 
 
@@ -435,35 +447,41 @@ def retrieve_context(
 # ============================================================
 # MEMBER 2 - PROMPT ENGINEERING
 # ============================================================
-
 def build_prompt(
     context_chunks: list[str],
     history: list[dict[str, str]],
     question: str,
 ) -> str:
     """
-    Member 2 integration point.
+    Build the final prompt using both:
 
-    The final version should use a strict RAG prompt that:
+        1. Retrieved PDF/document context
+        2. General LLM knowledge
 
-        1. Uses only retrieved context.
-        2. Uses conversation history for follow-up questions.
-        3. Does not invent information.
-        4. Says "I don't know" when the answer is not
-           present in the retrieved context.
-        5. Includes source information where appropriate.
+    Behavior:
+        - PDF information is prioritized when relevant.
+        - General knowledge can be used when the PDF does not
+          contain the answer.
+        - The assistant must not claim general knowledge came
+          from the uploaded document.
+        - The assistant must not invent information.
+        - Conversation history is used for follow-up questions.
     """
 
     # --------------------------------------------------------
-    # TEMPORARY DEVELOPMENT PROMPT
-    #
-    # This allows us to test the API/retriever connection
-    # before Member 2 finishes the final prompt.
+    # DOCUMENT CONTEXT
     # --------------------------------------------------------
 
     context = "\n\n".join(
         context_chunks
     )
+
+    if not context.strip():
+        context = "No relevant information was found in the uploaded documents."
+
+    # --------------------------------------------------------
+    # CONVERSATION HISTORY
+    # --------------------------------------------------------
 
     history_text = "\n".join(
         f"{message.get('role', 'user')}: "
@@ -471,27 +489,65 @@ def build_prompt(
         for message in history
     )
 
+    if not history_text.strip():
+        history_text = "No previous conversation."
+
+    # --------------------------------------------------------
+    # FINAL PROMPT
+    # --------------------------------------------------------
+
     prompt = f"""
-You are an AI assistant that answers questions using
-retrieved document context.
+You are an intelligent AI assistant that can answer questions
+using both uploaded PDF documents and your general knowledge.
 
-Use the retrieved context to answer the question.
+You have two sources of information:
 
-If the answer cannot be found in the context,
-say that you do not know.
+1. DOCUMENT CONTEXT
+   Information retrieved from the user's uploaded PDF.
 
-Do not invent facts.
+2. GENERAL KNOWLEDGE
+   Your existing knowledge as a language model.
 
-Conversation history:
-{history_text}
+Follow these rules:
 
-Retrieved context:
+1. If the answer is available in the document context,
+   prioritize the document information.
+
+2. If the document contains relevant information,
+   use the document as the primary source.
+
+3. If the document does not contain the answer,
+   you may answer using your general knowledge.
+
+4. Do NOT say "I don't know" merely because the answer
+   is not present in the uploaded PDF.
+
+5. If the question is unrelated to the uploaded PDF,
+   answer normally using your general knowledge.
+
+6. If the question requires information from both the
+   uploaded PDF and general knowledge, combine both sources
+   into a useful and accurate answer.
+
+7. Never claim that general knowledge came from the PDF.
+
+8. Never invent, fabricate, or hallucinate facts.
+
+9. Use conversation history to understand follow-up questions.
+
+10. If you genuinely do not know the answer, clearly say
+    that you do not know.
+
+DOCUMENT CONTEXT:
 {context}
 
-Current question:
+CONVERSATION HISTORY:
+{history_text}
+
+USER QUESTION:
 {question}
 
-Answer:
+ANSWER:
 """
 
     return prompt.strip()
@@ -513,11 +569,31 @@ async def stream_api_response(
           ↓
         llm.py
           ↓
-        Groq / Gemini / Claude
+        Groq / Gemini
           ↓
         Stream response
           ↓
         Save complete answer to memory
+
+    IMPORTANT: Every SSE "data:" field must be a SINGLE LINE.
+    LLM output (especially Gemini, which returns the whole
+    answer as one chunk) commonly contains embedded newlines
+    (e.g. numbered/bulleted lists). Sending that raw text after
+    "data: " breaks the SSE line-based protocol — everything
+    after the first newline becomes an unprefixed bare line.
+
+    On the frontend, any line that isn't prefixed with "data:"
+    used to be silently skipped/misparsed, which caused the
+    same earlier chunk to be reprocessed and produced repeated,
+    garbled output like:
+
+        "Here are 5 points about RAG:Here are 5 points about
+         RAG:Here are 5 points about RAG:..."
+
+    Fix: JSON-encode each chunk before sending it. json.dumps
+    escapes real newlines as the two characters \\n, guaranteeing
+    the payload is always exactly one line, no matter what the
+    LLM's raw text contains.
     """
 
     full_response = ""
@@ -531,9 +607,15 @@ async def stream_api_response(
 
             full_response += chunk
 
-            yield (
-                f"data: {chunk}\n\n"
-            )
+            # ------------------------------------------------
+            # JSON-encode so multi-line chunks can never break
+            # the "one data: field per line" SSE requirement.
+            # The frontend already knows how to unwrap
+            # {"content": "..."} (see stream_chat_response()).
+            # ------------------------------------------------
+            payload = json.dumps({"content": chunk})
+
+            yield f"data: {payload}\n\n"
 
         # ----------------------------------------------------
         # Save the complete assistant response
@@ -561,49 +643,134 @@ async def stream_api_response(
             "LLM streaming failed."
         )
 
-        yield (
-            "data: Sorry, the AI service is "
-            "temporarily unavailable.\n\n"
+        error_payload = json.dumps(
+            {
+                "content": (
+                    "Sorry, the AI service is "
+                    "temporarily unavailable."
+                )
+            }
         )
+
+        yield f"data: {error_payload}\n\n"
 
         yield "data: [DONE]\n\n"
 
 
 # ============================================================
-# DOCUMENT INGESTION
+# DOCUMENT INGESTION  (NOW IMPLEMENTED)
 # ============================================================
 
 def ingest_document(
     doc_id: str,
     path: Path,
-) -> None:
+) -> int:
     """
-    Document ingestion integration point.
-
-    Eventually this should connect the uploaded PDF to
-    the existing Week 1 + Week 2 pipeline:
+    Runs the uploaded PDF through the ingestion pipeline:
 
         PDF
          ↓
-        Cleaning
+        Extract text (ingest.extract_pdf)
          ↓
-        Chunking
+        Clean (data_cleaner.DataCleaner)
          ↓
-        Metadata
+        Chunk (data_chunker.split_documents)
          ↓
-        Embeddings
+        Tag every chunk with doc_id
          ↓
-        ChromaDB
+        Embed + store in the SAME ChromaDB collection
+        used by the Retriever
+
+    Returns
+    -------
+    int
+        Number of chunks that were embedded and stored.
+
+    Raises
+    ------
+    RuntimeError
+        If PDF extraction fails or no text could be extracted.
     """
 
     # --------------------------------------------------------
-    # TODO:
-    # Connect this to the team's ingestion pipeline.
+    # 1. Extract raw text from the uploaded PDF
     # --------------------------------------------------------
 
-    raise NotImplementedError(
-        "Document ingestion pipeline is not connected yet."
+    docs, _links = extract_pdf(str(path))
+
+    # extract_pdf returns a string like "ERROR::<path>::<exc>"
+    # on failure instead of a list of Documents.
+    if isinstance(docs, str):
+        raise RuntimeError(
+            f"Failed to extract text from PDF: {docs}"
+        )
+
+    if not docs:
+        raise RuntimeError(
+            "No extractable text found in the uploaded PDF."
+        )
+
+    logger.info(
+        "Extracted %d page(s) from uploaded PDF (doc_id=%s)",
+        len(docs),
+        doc_id,
     )
+
+    # --------------------------------------------------------
+    # 2. Clean the extracted pages
+    # --------------------------------------------------------
+
+    cleaner = DataCleaner()
+    cleaned_docs = cleaner.clean_documents(docs)
+
+    if not cleaned_docs:
+        raise RuntimeError(
+            "All extracted content was removed during cleaning "
+            "(document may be empty or unreadable)."
+        )
+
+    # --------------------------------------------------------
+    # 3. Chunk the cleaned pages
+    # --------------------------------------------------------
+
+    chunks = split_documents(cleaned_docs)
+
+    if not chunks:
+        raise RuntimeError(
+            "Document produced no chunks after splitting."
+        )
+
+    # --------------------------------------------------------
+    # 4. Tag every chunk with doc_id
+    #
+    # This is what allows /chat's metadata_filter
+    # {"doc_id": doc_id} to actually match something.
+    # --------------------------------------------------------
+
+    for chunk in chunks:
+        chunk.metadata["doc_id"] = doc_id
+        chunk.metadata["chunk_type"] = chunk.metadata.get(
+            "chunk_type", "parent"
+        )
+
+    # --------------------------------------------------------
+    # 5. Embed and add to the SAME Chroma collection
+    #    that the Retriever reads from
+    # --------------------------------------------------------
+
+    rag_retriever = get_retriever()
+
+    rag_retriever.vector_store.add_documents(
+        documents=chunks
+    )
+
+    logger.info(
+        "Ingested and indexed %d chunk(s) for doc_id=%s",
+        len(chunks),
+        doc_id,
+    )
+
+    return len(chunks)
 
 
 # ============================================================
@@ -657,10 +824,9 @@ async def upload_document(
     """
     Upload a PDF document.
 
-    The PDF is validated and saved locally.
-
-    The actual ingestion/indexing pipeline will be connected
-    through ingest_document().
+    The PDF is validated, saved locally, then ingested
+    (extracted, cleaned, chunked, embedded, and stored
+    in ChromaDB) via ingest_document().
     """
 
     # --------------------------------------------------------
@@ -761,35 +927,28 @@ async def upload_document(
     # Run ingestion
     # --------------------------------------------------------
 
-    ingestion_status = "received"
+    ingestion_status = "failed"
+    chunks_indexed = 0
 
     try:
 
-        ingest_document(
+        chunks_indexed = ingest_document(
             doc_id,
             dest,
         )
 
         ingestion_status = "indexed"
 
-    except NotImplementedError as error:
-
-        logger.warning(
-            "Ingestion not connected yet: %s",
-            error,
-        )
-
-        ingestion_status = "received"
-
     except Exception as error:
 
         logger.exception(
-            "Document ingestion failed."
+            "Document ingestion failed for doc_id=%s",
+            doc_id,
         )
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Document ingestion failed.",
+            detail=f"Document ingestion failed: {error}",
         ) from error
 
     # --------------------------------------------------------
@@ -800,6 +959,7 @@ async def upload_document(
         doc_id=doc_id,
         filename=file.filename,
         status=ingestion_status,
+        chunks_indexed=chunks_indexed,
         uploaded_at=(
             datetime.now(
                 timezone.utc
@@ -967,6 +1127,11 @@ def _self_test() -> None:
         - upload handling
         - /chat validation
         - retriever connection
+
+    NOTE: The "upload accepts PDF" test now requires a real,
+    parseable PDF with extractable text, since ingestion is
+    fully wired up. A minimal fake PDF byte string will fail
+    ingestion (500) rather than returning 200.
     """
 
     from fastapi.testclient import TestClient
@@ -1075,14 +1240,14 @@ def _self_test() -> None:
     )
 
     # --------------------------------------------------------
-    # Accept PDF
+    # Reject unparseable / fake PDF (now that ingestion runs)
     # --------------------------------------------------------
 
     response = client.post(
         "/upload",
         files={
             "file": (
-                "test.pdf",
+                "fake.pdf",
                 b"%PDF-1.4 test",
                 "application/pdf",
             )
@@ -1090,17 +1255,8 @@ def _self_test() -> None:
     )
 
     check(
-        "upload accepts PDF",
-        response.status_code == 200,
-    )
-
-    check(
-        "upload returns doc_id",
-        bool(
-            response.json().get(
-                "doc_id"
-            )
-        ),
+        "upload returns 500 for unparseable PDF",
+        response.status_code == 500,
     )
 
     # --------------------------------------------------------
