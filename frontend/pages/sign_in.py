@@ -18,8 +18,8 @@ from auth_db import (
 # =========================================================
 
 st.set_page_config(
-    page_title="AI PDF Chatbox",
-    page_icon="🛰️",
+    page_title="VYPER AI",
+    page_icon="frontend\VYPeR-AG_Logo_No_Background.png",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -385,7 +385,7 @@ if not has_account:
     # -----------------------------------------------------
 
     st.markdown(
-        '<div class="brand-icon">🛰️</div>',
+        '<div class="brand-icon">"frontend\VYPeR-AG_Logo_No_Background.png"</div>',
         unsafe_allow_html=True
     )
 
@@ -555,7 +555,7 @@ if not has_account:
 # ---------------------------------------------------------
 
 st.markdown(
-    '<div class="brand-icon">🛰️</div>',
+    '<div class="brand-icon>"frontend/VYPeR-AG_Logo_No_Background.png"</div>',
     unsafe_allow_html=True
 )
 

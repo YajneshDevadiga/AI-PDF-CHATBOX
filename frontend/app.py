@@ -89,13 +89,467 @@ CHATS_DIR.mkdir(parents=True, exist_ok=True)
 # ============================================================
 
 st.set_page_config(
-    page_title="AI PDF Chatbox",
-    page_icon="🤖",
+    page_title="VYPER AI",
+    page_icon="frontend/VYPeR-AG_Logo_No_Background.png",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="locked",
 )
+st.markdown("""
+<style>
+
+/* =========================================
+   VYPER AI - PROFESSIONAL AI THEME
+   ========================================= */
+
+/* ---------- ENTIRE APPLICATION ---------- */
+
+.stApp {
+    background:
+        radial-gradient(
+            circle at 15% 20%,
+            rgba(37, 99, 235, 0.22),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 85% 15%,
+            rgba(14, 165, 233, 0.18),
+            transparent 25%
+        ),
+        radial-gradient(
+            circle at 70% 80%,
+            rgba(59, 130, 246, 0.12),
+            transparent 30%
+        ),
+        linear-gradient(
+            135deg,
+            #020617 0%,
+            #061225 45%,
+            #081a33 100%
+        ) !important;
+
+    color: #e5efff !important;
+}
 
 
+/* ---------- REMOVE WHITE STREAMLIT AREAS ---------- */
+
+html,
+body,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+.main,
+.block-container {
+    background: transparent !important;
+}
+
+
+/* ---------- MAIN CONTENT ---------- */
+
+[data-testid="stAppViewContainer"] {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(2, 6, 23, 0.96),
+            rgba(5, 18, 38, 0.94)
+        ) !important;
+}
+
+
+/* ---------- SIDEBAR ---------- */
+
+section[data-testid="stSidebar"] {
+    background:
+        linear-gradient(
+            180deg,
+            #061226 0%,
+            #081a32 50%,
+            #050d1b 100%
+        ) !important;
+
+    border-right: 1px solid rgba(59, 130, 246, 0.25) !important;
+}
+
+
+/* Sidebar inner area */
+
+section[data-testid="stSidebar"] > div {
+    background: transparent !important;
+}
+
+
+/* Sidebar text */
+
+section[data-testid="stSidebar"] * {
+    color: #dbeafe !important;
+}
+
+
+/* ---------- AI BACKGROUND EFFECT ---------- */
+
+/* subtle circuit / neural-network style glow */
+
+[data-testid="stMain"] {
+    position: relative;
+    overflow: hidden;
+}
+
+[data-testid="stMain"]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(59,130,246,0.035) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            rgba(59,130,246,0.035) 1px,
+            transparent 1px
+        );
+
+    background-size: 55px 55px;
+
+    pointer-events: none;
+    z-index: 0;
+}
+
+
+/* ---------- HEADINGS ---------- */
+
+h1,
+h2,
+h3 {
+    color: #f1f7ff !important;
+}
+
+h1 {
+    font-weight: 750 !important;
+}
+
+h2 {
+    font-weight: 700 !important;
+}
+
+h3 {
+    font-weight: 650 !important;
+}
+
+
+/* ---------- NORMAL TEXT ---------- */
+
+p,
+label,
+span {
+    color: #c7d8ee;
+}
+
+
+/* ---------- CHAT MESSAGES ---------- */
+
+[data-testid="stChatMessage"] {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(15, 31, 55, 0.96),
+            rgba(8, 20, 38, 0.96)
+        ) !important;
+
+    border: 1px solid rgba(96, 165, 250, 0.18) !important;
+
+    border-radius: 16px !important;
+
+    box-shadow:
+        0 8px 30px rgba(0,0,0,0.28),
+        inset 0 1px 0 rgba(255,255,255,0.025) !important;
+}
+
+
+/* Chat message text */
+
+[data-testid="stChatMessage"] p,
+[data-testid="stChatMessage"] li {
+    color: #dbeafe !important;
+    line-height: 1.65 !important;
+}
+
+
+/* ---------- CHAT INPUT ---------- */
+
+/* Completely remove white background */
+
+[data-testid="stBottom"] {
+    background: transparent !important;
+}
+
+[data-testid="stBottom"] > div {
+    background: transparent !important;
+}
+
+[data-testid="stChatInput"] {
+    background: #0b2a52 !important;
+
+    border: 1px solid #2563eb !important;
+
+    border-radius: 15px !important;
+
+    box-shadow:
+        0 0 25px rgba(37,99,235,0.22),
+        0 10px 40px rgba(0,0,0,0.45) !important;
+}
+
+
+/* Input internal area */
+
+[data-testid="stChatInput"] > div {
+    background: #0b2a52 !important;
+    border: none !important;
+}
+
+
+/* Input field */
+
+[data-testid="stChatInput"] textarea {
+    background: #0b2a52 !important;
+
+    color: #ffffff !important;
+
+    caret-color: #60a5fa !important;
+
+    border: none !important;
+
+    font-size: 16px !important;
+}
+
+
+/* Placeholder */
+
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #9fc0e8 !important;
+    opacity: 1 !important;
+}
+
+
+/* Send button */
+
+[data-testid="stChatInput"] button {
+    background: #2563eb !important;
+
+    color: white !important;
+
+    border: none !important;
+
+    border-radius: 10px !important;
+
+    box-shadow: 0 4px 15px rgba(37,99,235,0.35) !important;
+}
+
+[data-testid="stChatInput"] button:hover {
+    background: #3b82f6 !important;
+}
+
+
+/* ---------- UPLOAD PDF ---------- */
+
+[data-testid="stFileUploader"] {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(15, 39, 70, 0.95),
+            rgba(7, 23, 43, 0.95)
+        ) !important;
+
+    border: 1px solid rgba(96,165,250,0.25) !important;
+
+    border-radius: 14px !important;
+}
+
+
+/* Upload area */
+
+[data-testid="stFileUploader"] section {
+    background: transparent !important;
+    border: none !important;
+}
+
+
+/* Upload button */
+
+[data-testid="stFileUploader"] button {
+    background: #1d4ed8 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 9px !important;
+}
+
+[data-testid="stFileUploader"] button:hover {
+    background: #2563eb !important;
+}
+
+
+/* ---------- NORMAL BUTTONS ---------- */
+
+.stButton > button {
+    background:
+        linear-gradient(
+            135deg,
+            #102d52,
+            #123b70
+        ) !important;
+
+    color: #e5efff !important;
+
+    border: 1px solid rgba(96,165,250,0.25) !important;
+
+    border-radius: 10px !important;
+}
+
+.stButton > button:hover {
+    background:
+        linear-gradient(
+            135deg,
+            #1d4ed8,
+            #2563eb
+        ) !important;
+
+    color: white !important;
+
+    border-color: #60a5fa !important;
+
+    box-shadow:
+        0 0 18px rgba(37,99,235,0.30) !important;
+}
+
+
+/* ---------- TEXT INPUTS ---------- */
+
+.stTextInput input,
+.stTextArea textarea {
+    background: #0b1d35 !important;
+
+    color: #eef6ff !important;
+
+    border: 1px solid rgba(96,165,250,0.25) !important;
+
+    border-radius: 10px !important;
+}
+
+.stTextInput input:focus,
+.stTextArea textarea:focus {
+    border-color: #3b82f6 !important;
+
+    box-shadow:
+        0 0 0 1px #3b82f6 !important;
+}
+
+
+/* ---------- SELECT BOX ---------- */
+
+[data-baseweb="select"] > div {
+    background: #0b1d35 !important;
+
+    color: #e5efff !important;
+
+    border-color: rgba(96,165,250,0.25) !important;
+}
+
+
+/* ---------- SUCCESS MESSAGE ---------- */
+
+[data-testid="stAlert"] {
+    background:
+        rgba(5, 45, 38, 0.88) !important;
+
+    border: 1px solid rgba(52,211,153,0.25) !important;
+
+    color: #a7f3d0 !important;
+
+    border-radius: 12px !important;
+}
+
+
+/* ---------- DIVIDERS ---------- */
+
+hr {
+    border-color: rgba(96,165,250,0.12) !important;
+}
+
+
+/* ---------- LINKS ---------- */
+
+a {
+    color: #60a5fa !important;
+}
+
+a:hover {
+    color: #93c5fd !important;
+}
+
+
+/* ---------- SCROLLBAR ---------- */
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #030914;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #173b6b;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #2563eb;
+}
+
+
+/* ---------- CODE BLOCK ---------- */
+
+code {
+    background: #061326 !important;
+    color: #93c5fd !important;
+}
+
+
+/* ---------- METRIC CARDS ---------- */
+
+[data-testid="stMetric"] {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(13,36,65,0.95),
+            rgba(7,22,41,0.95)
+        ) !important;
+
+    border: 1px solid rgba(96,165,250,0.18) !important;
+
+    border-radius: 14px !important;
+}
+
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 768px) {
+
+    .main .block-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    [data-testid="stChatInput"] {
+        border-radius: 12px !important;
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)  
+
+
+#restore#
 # ============================================================
 # MODERN SAAS CUSTOM CSS
 # ============================================================
@@ -119,7 +573,7 @@ st.markdown(
     header {display: none !important;}
     footer {visibility: hidden !important;}
     [data-testid="stSidebarNav"] {display: none !important;}
-    .stAppDeployButton {display: none !important;}
+    .stAppDeployButton {display: visible !important;}
     [data-testid="stToolbar"] {display: none !important;}
 
     /* Sidebar */
@@ -161,6 +615,14 @@ st.markdown(
         background: linear-gradient(90deg, #58a6ff 0%, #a371f7 100%);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
+    .title-vyper {
+        color: #ffffff !important;
+    }
+
+    .title-ai {
+        color: #3b82f6 !important;
+    }
+
     .hero-subtitle { color: #8b949e; font-size: 0.95rem; margin-top: 0.3rem; }
 
     /* Scope Pills */
@@ -472,9 +934,26 @@ def display_sources(sources: list) -> None:
 # ============================================================
 # SIDEBAR
 # ============================================================
+def render_sidebar():
 
-def render_sidebar() -> None:
     with st.sidebar:
+
+        st.markdown("## Document Center")
+
+        uploaded_file = st.file_uploader(
+            "Upload PDF",
+            type=["pdf"],
+            key="pdf_uploader"
+        )
+
+        if uploaded_file is not None:
+            st.write("Selected:", uploaded_file.name)
+
+        if st.button("Remove PDF", use_container_width=True):
+            st.session_state.doc_id = None
+            st.session_state.doc_name = None
+            st.rerun()
+            
 
         # --------------------------------------------------------
         # User Profile
@@ -789,10 +1268,10 @@ def process_message(prompt_text: str) -> None:
     st.session_state.messages.append({"role": "user", "content": prompt_text})
     save_chat_session()
     
-    with st.chat_message("user", avatar="🧑‍💻"):
+    with st.chat_message("user", avatar="👤"):
         st.markdown(prompt_text)
 
-    with st.chat_message("assistant", avatar="⚡"):
+    with st.chat_message("assistant", avatar="🌐"):
         placeholder = st.empty()
         full_response = ""
 
@@ -822,7 +1301,7 @@ def main() -> None:
     if st.session_state.is_authenticated:
         _, user_display_col, signout_col = st.columns([7.2, 1.6, 1.2])
         with user_display_col:
-            st.markdown(f"<div style='text-align:right; padding-top:8px; color:#8b949e; font-size:0.9rem;'>Logged in as <b style='color:#f0f6fc;'>{st.session_state.user_name}</b></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:right; padding-top:8px; color:#8b949e; font-size:0.9rem;'>Logged in as : <b style='color:#f0f6fc;'>{st.session_state.user_name}</b></div>", unsafe_allow_html=True)
         with signout_col:
             st.button("Sign Out", on_click=sign_out, use_container_width=True)
     else:
@@ -840,7 +1319,10 @@ def main() -> None:
     st.markdown(
         """
         <div class="hero-container">
-            <h1 class="hero-title">AI PDF Chatbox</h1>
+            <h2 class="hero-title">
+            <span class="title-vyper">VYPER</span>
+            <span class="title-ai"> AI</span>
+            </h2>
             <div class="hero-subtitle">High-precision Retrieval-Augmented Generation (RAG) assistant for your documents</div>
         </div>
         """,
@@ -851,11 +1333,11 @@ def main() -> None:
     if st.session_state.doc_id:
         st.markdown(f'<div class="scope-pill scope-pill-doc">🎯 Scoped to: <b>{st.session_state.doc_name}</b></div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="scope-pill scope-pill-global">🌐 Searching full knowledge base (No document filter applied)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="scope-pill scope-pill-global">🔗 Searching full knowledge base (No document filter applied)</div>', unsafe_allow_html=True)
 
     # Empty State & Quick Starters
     if not st.session_state.messages:
-        st.markdown("#### 💡 Quick Starters")
+        st.markdown("####   QUICK MOVES")
         c1, c2, c3 = st.columns(3)
         c1.button("📖 Document Summary\n\nSummarize key takeaways", on_click=set_quick_prompt, args=("Summarize the key takeaways and main concepts of the document.",), use_container_width=True)
         c2.button("🔍 Concept Breakdown\n\nExplain key technical details", on_click=set_quick_prompt, args=("Explain the core architecture and key technical concepts in the document.",), use_container_width=True)
@@ -865,7 +1347,7 @@ def main() -> None:
     # Render Active Chat
     for msg in st.session_state.messages:
         role = msg.get("role", "assistant")
-        avatar = "🧑‍💻" if role == "user" else "⚡"
+        avatar = "👤" if role == "user" else "🌐"
         with st.chat_message(role, avatar=avatar):
             st.markdown(msg.get("content", ""))
             sources = msg.get("sources", [])
