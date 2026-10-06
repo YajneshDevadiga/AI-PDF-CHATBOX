@@ -3,7 +3,7 @@ frontend/pages/sign_up.py
 """
 import streamlit as st
 
-st.set_page_config(page_title="Sign Up - AI Chatbox", page_icon="✨", layout="centered")
+st.set_page_config(page_title="Sign Up - VYPER AI", page_icon="frontend\VYPeR-AG_Logo_No_Background.png", layout="centered")
 
 st.markdown(
     """
